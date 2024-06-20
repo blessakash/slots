@@ -1,6 +1,5 @@
-const { default: mongoose } = require("mongoose");
+const { mongoose } = require("mongoose");
 const Joi = require("joi");
-const { object, string, date, number, array, boolean, union } = require("zod");
 const { enumDays } = require("../constants");
 
 const slotSchema = Joi.object({
