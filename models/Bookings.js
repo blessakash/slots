@@ -5,21 +5,37 @@ const aggregatePaginate = require("mongoose-aggregate-paginate-v2");
 
 const bookingSchema = new Schema(
   {
-    eventId: { type: mongoose.Schema.Types.ObjectId, ref: "Event" },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    eventId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+      required: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    slotId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Slot",
+      required: true,
+    },
     status: { type: String, enum: ["booked", "cancelled"], default: "booked" },
     bookedAt: {
       type: Date,
+      required: true,
     },
     cancelledAt: {
       type: Date,
     },
-    day: { type: String, enum: enumDays },
+    day: { type: String, enum: enumDays, required: true },
     startTime: {
       type: String, // Time in HH:MM format
+      required: true,
     },
     endTime: {
       type: String, // Time in HH:MM format
+      required: true,
     },
     adults: {
       type: Number,
@@ -33,10 +49,6 @@ const bookingSchema = new Schema(
       type: Number,
       default: 0,
     },
-    // totalSlotsTaken: {
-    //   type: Number,
-    //   default: 0,
-    // },
     privateSession: {
       type: Boolean,
       default: false,

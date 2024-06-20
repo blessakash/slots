@@ -1,7 +1,8 @@
 const express = require("express");
 const app = express();
 require("dotenv");
-const routes = require("./controllers/Event");
+// const routes = require("./controllers/Event");
+const routes = require("./routes/event");
 const { default: mongoose } = require("mongoose");
 const bodyParser = require("body-parser");
 app.use(bodyParser.json());

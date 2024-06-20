@@ -4,18 +4,15 @@ const Schema = mongoose.Schema;
 const aggregatePaginate = require("mongoose-aggregate-paginate-v2");
 
 // Define slot schema (embedded document)
-const slotSchema = new Schema(
-  {
-    startTime: String, // Time in HH:MM format
-    endTime: String, // Time in HH:MM format
-  }
-  // { _id: false }
-);
+const slotSchema = new Schema({
+  startTime: String, // Time in HH:MM format
+  endTime: String, // Time in HH:MM format
+});
 
 // Define event schema
 const eventSchema = new Schema({
-  title: { type: String, required: true },
-  description: { type: String },
+  name: { type: String, required: true },
+  desc: { type: String },
   startDate: { type: Date, required: true },
   endDate: { type: Date },
   frequency: { type: String, enum: ["weekly", "daily"], default: "daily" }, // Only supporting weekly frequency for now
@@ -68,13 +65,13 @@ const eventSchema = new Schema({
 });
 
 // Define a virtual property that depends on field1
-eventSchema.virtual("byDay").get(function () {
-  // Define your logic based on field1
-  return this.daySlots.map((l) => l.day); // Example logic
-});
+// eventSchema.virtual("byDay").get(function () {
+//   // Define your logic based on field1
+//   return this.daySlots.map((l) => l.day); // Example logic
+// });
 
-// Ensure virtual fields are included when converting to JSON
-eventSchema.set("toJSON", { getters: true });
+// // Ensure virtual fields are included when converting to JSON
+// eventSchema.set("toJSON", { getters: true });
 
 eventSchema.plugin(aggregatePaginate);
 
