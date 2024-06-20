@@ -1,16 +1,16 @@
 const mongoose = require("mongoose");
+const { enumDays } = require("../constants");
 const Schema = mongoose.Schema;
+const aggregatePaginate = require("mongoose-aggregate-paginate-v2");
 
 // Define slot schema (embedded document)
 const slotSchema = new Schema(
   {
     startTime: String, // Time in HH:MM format
     endTime: String, // Time in HH:MM format
-  },
-  { _id: false }
+  }
+  // { _id: false }
 );
-
-export const enumDays = ["MON", "TUE", "WED", "THU", "FRY", "SAT", "SUN"];
 
 // Define event schema
 const eventSchema = new Schema({
@@ -34,11 +34,12 @@ const eventSchema = new Schema({
     },
   ], // Different slots for each day of the week
   maxPublicGuests: {
-    type: Boolean,
+    type: Number,
+    default: 0,
   },
   minPublicGuests: {
-    type: Boolean,
-    default: 1,
+    type: Number,
+    default: 0,
   },
   publicSession: {
     type: Boolean,
@@ -49,11 +50,12 @@ const eventSchema = new Schema({
     default: 0,
   },
   maxPrivateGuests: {
-    type: Boolean,
+    type: Number,
+    default: 0,
   },
   minPrivateGuests: {
-    type: Boolean,
-    default: 1,
+    type: Number,
+    default: 0,
   },
   privateSession: {
     type: Boolean,
@@ -73,6 +75,8 @@ eventSchema.virtual("byDay").get(function () {
 
 // Ensure virtual fields are included when converting to JSON
 eventSchema.set("toJSON", { getters: true });
+
+eventSchema.plugin(aggregatePaginate);
 
 // Create Event model
 const Event = mongoose.model("Event", eventSchema);
