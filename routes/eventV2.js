@@ -172,17 +172,18 @@ router.post("/update/:eventId", async (req, res) => {
   const { daySlots, exceptions, timezone, startDate, endDate, frequency } =
     req.body;
   const event = await Event.findById(req.params.eventId);
-  const slots = await Slot.find({ eventId: event._id });
+  console.log(daySlots);
+  const slots = await Slot.deleteMany({ eventId: req.params.eventId });
 
-  for (let i = 0; i < slots.length; i++) {
-    const f = slots[i];
-    const c = await Booking.countDocuments({ slotId: f._id });
-    if (c == 0) {
-      const del = await Slot.deleteOne({ _id: f._id });
-    } else {
-      const updat = await Slot.updateOne({ _id: f._id }, { isArchive: true });
-    }
-  }
+  //   for (let i = 0; i < slots.length; i++) {
+  //     const f = slots[i];
+  //     const c = await Booking.countDocuments({ slotId: f._id });
+  //     if (c == 0) {
+  //       const del = await Slot.deleteOne({ _id: f._id });
+  //     } else {
+  //       const updat = await Slot.updateOne({ _id: f._id }, { isArchive: true });
+  //     }
+  //   }
 
   const eventStartDate = moment.tz(startDate, timezone);
   const eventEndDate = moment.tz(endDate, timezone);
@@ -210,20 +211,26 @@ router.post("/update/:eventId", async (req, res) => {
     m.add(1, "days")
   ) {
     const currentDay = m.format("ddd").toUpperCase().slice(0, 3); // Get day abbreviation (e.g., "MO" for Monday)
-    const daySlot = daySlots.find((slot) => slot.day === currentDay);
-    if (daySlot) {
+    const daySlot = daySlots.find((slot) => slot.day == currentDay);
+    if (daySlot?.day) {
       daySlot.slots.forEach((slot) => {
         const unavailable = isException(m, currentDay, slot);
         newSlots.push({
           eventId: event._id,
-          startTime: m.clone().set({
-            hours: slot.startTime.split(":")[0],
-            minutes: slot.startTime.split(":")[1],
-          }),
-          endTime: m.clone().set({
-            hours: slot.endTime.split(":")[0],
-            minutes: slot.endTime.split(":")[1],
-          }),
+          startTime: m
+            .clone()
+            .set({
+              hours: slot.startTime.split(":")[0],
+              minutes: slot.startTime.split(":")[1],
+            })
+            .toISOString(),
+          endTime: m
+            .clone()
+            .set({
+              hours: slot.endTime.split(":")[0],
+              minutes: slot.endTime.split(":")[1],
+            })
+            .toISOString(),
           privateSlots: event.maxPrivateGuests,
           publicSlots: event.maxPublicGuests,
           ...(unavailable ? { isUnavailable: true } : {}),
@@ -231,6 +238,8 @@ router.post("/update/:eventId", async (req, res) => {
       });
     }
   }
+
+  console.log(newSlots.length);
 
   await Slot.insertMany(slots);
   return res.json({});
