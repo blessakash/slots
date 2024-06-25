@@ -8,11 +8,11 @@ const slotSchema = new Schema({
   endTime: { type: Date, required: true },
   privateSlots: { type: Number, required: true },
   publicSlots: { type: Number, required: true },
-  status: {
-    type: String,
-    enum: ["available", "unavailable"],
-    default: "available",
-  },
+  // status: {
+  //   type: String,
+  //   enum: ["available", "unavailable"],
+  //   default: "available",
+  // },
   isArchive: Boolean,
   isUnavailable: Boolean,
 });

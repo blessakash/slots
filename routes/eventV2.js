@@ -152,7 +152,7 @@ router.post("/event", async (req, res) => {
             }),
             privateSlots: event.maxPrivateGuests,
             publicSlots: event.maxPublicGuests,
-            status: unavailable ? "unavailable" : "available",
+            ...(unavailable ? { isUnavailable: true } : {}),
           });
         });
       }
