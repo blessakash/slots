@@ -173,7 +173,10 @@ router.post("/update/:eventId", async (req, res) => {
     req.body;
   const event = await Event.findById(req.params.eventId);
   console.log(daySlots);
-  const slots = await Slot.deleteMany({ eventId: req.params.eventId });
+  const slots = await Slot.updateMany(
+    { eventId: req.params.eventId },
+    { isArchive: true }
+  );
 
   //   for (let i = 0; i < slots.length; i++) {
   //     const f = slots[i];
@@ -241,7 +244,7 @@ router.post("/update/:eventId", async (req, res) => {
 
   console.log(newSlots.length);
 
-  await Slot.insertMany(slots);
+  await Slot.insertMany(newSlots);
   return res.json({});
 });
 module.exports = router;
