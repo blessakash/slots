@@ -173,10 +173,8 @@ router.post("/update/:eventId", async (req, res) => {
     req.body;
   const event = await Event.findById(req.params.eventId);
   console.log(daySlots);
-  const slots = await Slot.updateMany(
-    { eventId: req.params.eventId },
-    { isArchive: true }
-  );
+  const slots = await Slot.find({ eventId: req.params.eventId });
+  await Slot.updateMany({ eventId: req.params.eventId }, { isArchive: true });
 
   //   for (let i = 0; i < slots.length; i++) {
   //     const f = slots[i];
@@ -218,31 +216,45 @@ router.post("/update/:eventId", async (req, res) => {
     if (daySlot?.day) {
       daySlot.slots.forEach((slot) => {
         const unavailable = isException(m, currentDay, slot);
+        const startTime = m
+          .clone()
+          .set({
+            hours: slot.startTime.split(":")[0],
+            minutes: slot.startTime.split(":")[1],
+          })
+          .toISOString();
+        const endTime = m
+          .clone()
+          .set({
+            hours: slot.endTime.split(":")[0],
+            minutes: slot.endTime.split(":")[1],
+          })
+          .toISOString();
+        const oldSlot = slots.find(
+          (f) => f.startTime == startTime && f.endTime == endTime
+        );
+
         newSlots.push({
           eventId: event._id,
-          startTime: m
-            .clone()
-            .set({
-              hours: slot.startTime.split(":")[0],
-              minutes: slot.startTime.split(":")[1],
-            })
-            .toISOString(),
-          endTime: m
-            .clone()
-            .set({
-              hours: slot.endTime.split(":")[0],
-              minutes: slot.endTime.split(":")[1],
-            })
-            .toISOString(),
-          privateSlots: event.maxPrivateGuests,
-          publicSlots: event.maxPublicGuests,
+          startTime,
+          endTime,
+          privateSlots: oldSlot
+            ? oldSlot == event.maxPrivateGuests
+              ? event.maxPrivateGuests
+              : "update"
+            : event.maxPrivateGuests,
+          publicSlots: oldSlot
+            ? oldSlot == event.maxPublicGuests
+              ? event.maxPublicGuests
+              : "update"
+            : event.maxPublicGuests,
           ...(unavailable ? { isUnavailable: true } : {}),
         });
       });
     }
   }
 
-  console.log(newSlots.length);
+  console.log(newSlots);
 
   await Slot.insertMany(newSlots);
   return res.json({});
