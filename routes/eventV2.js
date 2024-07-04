@@ -171,28 +171,37 @@ router.post("/event", async (req, res) => {
 router.post("/update/:eventId", async (req, res) => {
   const { daySlots, exceptions, timezone, startDate, endDate, frequency } =
     req.body;
-  const event = await Event.findById(req.params.eventId);
-  console.log(daySlots);
-  const slots = await Slot.find({ eventId: req.params.eventId });
-  await Slot.updateMany({ eventId: req.params.eventId }, { isArchive: true });
-
-  //   for (let i = 0; i < slots.length; i++) {
-  //     const f = slots[i];
-  //     const c = await Booking.countDocuments({ slotId: f._id });
-  //     if (c == 0) {
-  //       const del = await Slot.deleteOne({ _id: f._id });
-  //     } else {
-  //       const updat = await Slot.updateOne({ _id: f._id }, { isArchive: true });
-  //     }
-  //   }
+  const [event, deleteResult] = await Promise.all([
+    Event.findByIdAndUpdate(req.params.eventId, req.body, { new: true }).select(
+      "_id maxPrivateGuests maxPublicGuests publicSession privateSession"
+    ),
+    Slot.deleteMany({ eventId: req.params.eventId }),
+  ]);
 
   const eventStartDate = moment.tz(startDate, timezone);
   const eventEndDate = moment.tz(endDate, timezone);
+  const endDateForWeekly = eventStartDate.clone().add(60, "days");
 
-  const newSlots = [];
+  console.log(eventStartDate, eventEndDate);
+
+  const slots = [];
+
+  // const isException = (date, day, slot) => {
+  //   const exception = exceptions.find(
+  //     (exc) =>
+  //       moment(exc.date).isSame(date, "day") &&
+  //       exc.day === day &&
+  //       exc.slots.some(
+  //         (excSlot) =>
+  //           excSlot.startTime === slot.startTime &&
+  //           excSlot.endTime === slot.endTime
+  //       )
+  //   );
+  //   return exception ? true : false;
+  // };
 
   const isException = (date, day, slot) => {
-    const exception = exceptions.find(
+    return exceptions.some(
       (exc) =>
         moment(exc.date).isSame(date, "day") &&
         exc.day === day &&
@@ -202,61 +211,128 @@ router.post("/update/:eventId", async (req, res) => {
             excSlot.endTime === slot.endTime
         )
     );
-    return exception ? true : false;
   };
 
-  const endDateForWeekly = eventStartDate.clone().add(60, "days");
   for (
     let m = eventStartDate.clone();
     m.isBefore(frequency === "monthly" ? endDateForWeekly : eventEndDate);
     m.add(1, "days")
   ) {
     const currentDay = m.format("ddd").toUpperCase().slice(0, 3); // Get day abbreviation (e.g., "MO" for Monday)
-    const daySlot = daySlots.find((slot) => slot.day == currentDay);
-    if (daySlot?.day) {
+    const daySlot = daySlots.find((slot) => slot.day === currentDay);
+    console.log(m, currentDay, daySlot);
+    if (daySlot) {
       daySlot.slots.forEach((slot) => {
         const unavailable = isException(m, currentDay, slot);
-        const startTime = m
-          .clone()
-          .set({
-            hours: slot.startTime.split(":")[0],
-            minutes: slot.startTime.split(":")[1],
-          })
-          .toISOString();
-        const endTime = m
-          .clone()
-          .set({
-            hours: slot.endTime.split(":")[0],
-            minutes: slot.endTime.split(":")[1],
-          })
-          .toISOString();
-        const oldSlot = slots.find(
-          (f) => f.startTime == startTime && f.endTime == endTime
-        );
-
-        newSlots.push({
+        slots.push({
           eventId: event._id,
-          startTime,
-          endTime,
-          privateSlots: oldSlot
-            ? oldSlot == event.maxPrivateGuests
-              ? event.maxPrivateGuests
-              : "update"
-            : event.maxPrivateGuests,
-          publicSlots: oldSlot
-            ? oldSlot == event.maxPublicGuests
-              ? event.maxPublicGuests
-              : "update"
-            : event.maxPublicGuests,
+          startTime: m
+            .clone()
+            .set({
+              hours: slot.startTime.split(":")[0],
+              minutes: slot.startTime.split(":")[1],
+            })
+            .toDate(),
+          endTime: m
+            .clone()
+            .set({
+              hours: slot.endTime.split(":")[0],
+              minutes: slot.endTime.split(":")[1],
+            })
+            .toDate(),
+
+          ...(event.publicSession ? { publicSession: true } : {}),
+          ...(event.publicSession
+            ? { publicSlots: event.maxPublicGuests }
+            : {}),
+          ...(event.privateSession ? { privateSession: true } : {}),
+          ...(event.privateSession
+            ? { privateSlots: event.maxPrivateGuests }
+            : {}),
           ...(unavailable ? { isUnavailable: true } : {}),
         });
       });
     }
   }
 
-  console.log(newSlots);
+  console.log(slots);
 
-  await Slot.insertMany(newSlots);
-  return res.json({});
+  await Slot.insertMany(slots);
+  return res.json(event);
 });
+const generateSlotsForEvent = async (event) => {
+  const { daySlots, exceptions, timezone, startDate, endDate, frequency } =
+    event;
+  const eventStartDate = moment.tz(startDate, timezone);
+  const eventEndDate = moment.tz(endDate, timezone);
+  const endDateForWeekly = eventStartDate.clone().add(60, "days");
+
+  const slots = [];
+
+  const isException = (date, day, slot) => {
+    return exceptions.some(
+      (exc) =>
+        moment(exc.date).isSame(date, "day") &&
+        exc.day === day &&
+        exc.slots.some(
+          (excSlot) =>
+            excSlot.startTime === slot.startTime &&
+            excSlot.endTime === slot.endTime
+        )
+    );
+  };
+
+  for (
+    let m = eventStartDate.clone();
+    m.isBefore(frequency === "monthly" ? endDateForWeekly : eventEndDate);
+    m.add(1, "days")
+  ) {
+    const currentDay = m.format("ddd").toUpperCase().slice(0, 3);
+    const daySlot = daySlots.find((slot) => slot.day === currentDay);
+    if (daySlot) {
+      daySlot.slots.forEach((slot) => {
+        const unavailable = isException(m, currentDay, slot);
+        slots.push({
+          eventId: event._id,
+          startTime: m
+            .clone()
+            .set({
+              hours: slot.startTime.split(":")[0],
+              minutes: slot.startTime.split(":")[1],
+            })
+            .toDate(),
+          endTime: m
+            .clone()
+            .set({
+              hours: slot.endTime.split(":")[0],
+              minutes: slot.endTime.split(":")[1],
+            })
+            .toDate(),
+          privateSlots: event.maxPrivateGuests,
+          publicSlots: event.maxPublicGuests,
+          isUnavailable: unavailable,
+        });
+      });
+    }
+  }
+
+  await Slot.insertMany(slots);
+};
+// cron.schedule("0 0 * * *", async () => {
+//   const events = await Event.find();
+
+//   for (const event of events) {
+//     const slots = await Slot.find({ eventId: event._id });
+//     const oneDayBeforeEndDate = moment(event.endDate).subtract(1, "days");
+
+//     if (slots.length > 0) {
+//       const lastSlotDate = moment(slots[slots.length - 1].startTime).startOf(
+//         "day"
+//       );
+//       if (lastSlotDate.isSame(oneDayBeforeEndDate, "day")) {
+//         await generateSlotsForEvent(event);
+//       }
+//     }
+//   }
+// });
 module.exports = router;

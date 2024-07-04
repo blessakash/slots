@@ -6,15 +6,10 @@ const slotSchema = new Schema({
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: "Event" },
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true },
-  privateSlots: { type: Number, required: true },
-  publicSlots: { type: Number, required: true },
-  // status: {
-  //   type: String,
-  //   enum: ["available", "unavailable"],
-  //   default: "available",
-  // },
-  isArchive: Boolean,
-  isUnavailable: Boolean,
+  privateSlots: { type: Number },
+  publicSlots: { type: Number },
+  publicSession: { type: Boolean },
+  privateSession: { type: Boolean },
 });
 
 // Define a virtual property that depends on field1
